@@ -7,9 +7,3 @@ variable "helm_version" {
   description = "Versão do Fluent Bit"
   type        = string
 }
-
-variable "node_pool" {
-  description = "Node pool onde os recursos serão implantados no ambiente de desenvolvimento"
-  type        = string
-  default     = "default-pool"
-}

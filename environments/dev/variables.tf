@@ -28,12 +28,6 @@ variable "environment" {
   default     = "dev"
 }
 
-variable "node_pool" {
-  description = "Node pool onde os recursos serão implantados no ambiente de desenvolvimento"
-  type        = string
-  default     = "default-pool"
-}
-
 variable "resource_limits" {
   description = "Limites de recursos (replicas, CPU e memória) para os pods no ambiente de desenvolvimento"
   type = object({

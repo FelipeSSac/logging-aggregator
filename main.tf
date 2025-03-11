@@ -30,6 +30,4 @@ module "fluent_bit" {
   
   namespace    = var.namespace
   helm_version = var.fluent_bit_version
-
-  node_pool    = var.node_pool
 }

@@ -38,3 +38,6 @@ secrets.tfvars
 *.tfstate.backup
 
 .terraform/modules/
+
+*.key
+*.crt
