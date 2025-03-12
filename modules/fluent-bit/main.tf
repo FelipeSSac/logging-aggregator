@@ -32,16 +32,44 @@ resource "helm_release" "fluent_bit" {
 
       outputs: |
         [OUTPUT]
-            Name        es
-            Match       *
-            Host        elasticsearch-master
-            Port        9200
+            Name            es
+            Match           *
+            Host            elasticsearch-master
+            Port            9200
             Logstash_Format On
             Logstash_Prefix fluent-bit
-            Replace_Dots On
-            Retry_Limit False
-            tls         Off
-            tls.verify  Off
+            Replace_Dots    On
+            Retry_Limit     False
+            tls             Off
+            tls.verify      Off
+            HTTP_User       ${var.fluent_bit_username}
+            HTTP_Passwd     ${var.fluent_bit_password}
+            Suppress_Type_Name On
     EOT
   ]
+
+  set {
+    name  = "extraVolumes[0].name"
+    value = "fluent-bit-secret"
+  }
+
+  set {
+    name  = "extraVolumes[0].secret.secretName"
+    value = "fluent-bit-secret"
+  }
+
+  set {
+    name  = "extraVolumeMounts[0].name"
+    value = "fluent-bit-secret"
+  }
+
+  set {
+    name  = "extraVolumeMounts[0].mountPath"
+    value = "/fluent-bit-secret"
+  }
+
+  set {
+    name  = "extraVolumeMounts[0].readOnly"
+    value = "true"
+  }
 }

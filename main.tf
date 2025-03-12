@@ -30,4 +30,7 @@ module "fluent_bit" {
   
   namespace    = var.namespace
   helm_version = var.fluent_bit_version
+
+  fluent_bit_username = var.fluent_bit_username
+  fluent_bit_password = var.fluent_bit_password
 }

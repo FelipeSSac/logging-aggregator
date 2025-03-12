@@ -22,6 +22,16 @@ variable "fluent_bit_version" {
   default     = "0.48.9"
 }
 
+variable "fluent_bit_username" {
+  description = "Nome de usuário para autenticação no Fluent Bit"
+  type        = string
+}
+
+variable "fluent_bit_password" {
+  description = "Senha para autenticação no Fluent Bit"
+  type        = string
+}
+
 variable "environment" {
   description = "Nome do ambiente (dev, staging, prod, etc.)"
   type        = string
