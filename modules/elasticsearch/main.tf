@@ -4,60 +4,126 @@ resource "helm_release" "elasticsearch" {
   chart      = "elasticsearch"
   namespace  = var.namespace
   version    = var.helm_version
+  # timeout    = var.timeout_seconds
 
-  values = [
-    file("${path.module}/values.yaml")
-  ]
+  # values = [
+  #   file("${path.module}/values.yaml"),
+  #   var.additional_values
+  # ]
 
+  # Configurações básicas
   set {
     name  = "replicas"
-    value = "1"
+    value = var.resource_limits.replicas
   }
 
   set {
     name  = "minimumMasterNodes"
-    value = "1"
+    value = var.resource_limits.replicas == "1" ? "1" : ceil(tonumber(var.resource_limits.replicas) / 2 + 0.5)
   }
 
+  # Configurações de recursos
   set {
     name  = "resources.limits.cpu"
-    value = "1000m"
+    value = var.resource_limits.cpu
   }
 
   set {
     name  = "resources.limits.memory"
-    value = "2Gi"
+    value = var.resource_limits.memory
   }
+
+  # set {
+  #   name  = "resources.requests.cpu"
+  #   value = var.enable_requests ? format("%sm", max(500, tonumber(trimsuffix(var.resource_limits.cpu, "m")) / 2)) : "100m"
+  # }
+
+  # set {
+  #   name  = "resources.requests.memory"
+  #   value = var.enable_requests ? format("%s", max("512Mi", var.resource_limits.memory)) : "256Mi"
+  # }
+
+  # # Configurações de Java
+  # set {
+  #   name  = "esJavaOpts"
+  #   value = "-Xmx${tonumber(trimsuffix(var.resource_limits.memory, "Gi")) / 2}g -Xms${tonumber(trimsuffix(var.resource_limits.memory, "Gi")) / 2}g"
+  # }
+
+  # # Configurações de persistência
+  # set {
+  #   name  = "persistence.enabled"
+  #   value = var.persistence_enabled ? "true" : "false"
+  # }
+
+  # set {
+  #   name  = "volumeClaimTemplate.enabled"
+  #   value = var.persistence_enabled ? "true" : "false"
+  # }
+
+  # dynamic "set" {
+  #   for_each = var.persistence_enabled ? [1] : []
+  #   content {
+  #     name  = "volumeClaimTemplate.accessModes[0]"
+  #     value = "ReadWriteOnce"
+  #   }
+  # }
+
+  # dynamic "set" {
+  #   for_each = var.persistence_enabled ? [1] : []
+  #   content {
+  #     name  = "volumeClaimTemplate.storageClassName"
+  #     value = "standard"
+  #   }
+  # }
+
+  # dynamic "set" {
+  #   for_each = var.persistence_enabled ? [1] : []
+  #   content {
+  #     name  = "volumeClaimTemplate.resources.requests.storage"
+  #     value = var.storage_size
+  #   }
+  # }
+
+  # # Configurações de segurança
+  # set {
+  #   name  = "antiAffinity"
+  #   value = "soft"
+  # }
 
   set {
     name  = "podDisruptionBudget.enabled"
+    value = var.resource_limits.replicas == "1" ? "false" : "true"
+  }
+
+  set {
+    name  = "xpack.security.enabled"
     value = "false"
   }
 
   set {
-    name  = "volumeClaimTemplate.enabled"
+    name  = "xpack.security.transport.ssl.enabled"
     value = "false"
   }
 
   set {
-    name  = "imageTag"
-    value = "8.10.0"
+    name  = "xpack.security.http.ssl.enabled"
+    value = "false"
   }
 
   set {
-    name  = "esJavaOpts"
-    value = "-Xmx1g -Xms1g"
+    name = "xpack.security.enrollment.enabled" 
+    value = "false"
   }
 
-  # Adicionar configurações explícitas de segurança
-  set {
-    name  = "antiAffinity"
-    value = "soft"
-  }
+  # set {
+  #   name  = "imageTag"
+  #   value = "8.10.0"
+  # }
 
+  # # Configurações explícitas de segurança
   set {
     name  = "security.enabled"
-    value = "false"
+    value = "false"  # Changed from true to false
   }
 
   set {
@@ -85,37 +151,54 @@ resource "helm_release" "elasticsearch" {
     value = "false"
   }
 
+  # Add these set blocks for password configuration
   set {
-    name  = "volumeClaimTemplate.accessModes[0]"
-    value = "ReadWriteOnce"
+    name  = "secret.enabled"
+    value = "true"
   }
 
-  set {
-    name  = "volumeClaimTemplate.storageClassName"
-    value = "standard"
+  set_sensitive {
+    name  = "secret.password"
+    value = "elastic"
   }
+  
+  # # Monitoramento
+  # set {
+  #   name  = "metrics.enabled"
+  #   value = var.enable_monitoring ? "true" : "false"
+  # }
 
-  set {
-    name  = "volumeClaimTemplate.resources.requests.storage"
-    value = "10Gi"
+  # set {
+  #   name  = "metrics.serviceMonitor.enabled"
+  #   value = var.enable_monitoring ? "true" : "false"
+  # }
+}
+
+resource "kubernetes_service" "elasticsearch_service" {
+  metadata {
+    name      = "elasticsearch-master-external"
+    namespace = var.namespace
+    labels = {
+      app = "elasticsearch-master"
+    }
   }
-
-  set {
-    name  = "persistence.enabled"
-    value = "false"
-  }
-
-  set {
-    name  = "resources.requests.memory"
-    value = "2Gi"
-  }
-
-  set {
-    name  = "resources.requests.cpu"
-    value = "1000m"
+  spec {
+    selector = {
+      app = "elasticsearch-master"
+    }
+    port {
+      name        = "http"
+      port        = 9200
+      target_port = 9200
+    }
+    type = "ClusterIP"
   }
 }
 
 output "endpoint" {
   value = "http://elasticsearch-master:9200"
+}
+
+output "service_name" {
+  value = "elasticsearch-master"
 }

@@ -8,12 +8,44 @@ variable "helm_version" {
   type        = string
 }
 
-variable "fluent_bit_username" {
-  description = "Nome de usuário para autenticação no Fluent Bit"
+variable "elasticsearch_host" {
+  description = "Host do Elasticsearch"
   type        = string
+  default     = "elasticsearch-master"
 }
 
-variable "fluent_bit_password" {
-  description = "Senha para autenticação no Fluent Bit"
+variable "elasticsearch_port" {
+  description = "Porta do Elasticsearch"
   type        = string
+  default     = "9200"
+}
+
+variable "log_level" {
+  description = "Nível de log do Fluent Bit"
+  type        = string
+  default     = "info"
+}
+
+variable "tls_enabled" {
+  description = "Habilitar TLS para conexão com Elasticsearch"
+  type        = bool
+  default     = false
+}
+
+variable "logstash_prefix" {
+  description = "Prefixo para índices do Logstash"
+  type        = string
+  default     = "fluent-bit"
+}
+
+variable "timeout_seconds" {
+  description = "Tempo de timeout para instalação do Helm"
+  type        = number
+  default     = 600
+}
+
+variable "additional_values" {
+  description = "Valores adicionais para o Helm chart"
+  type        = string
+  default     = ""
 }

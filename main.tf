@@ -7,30 +7,50 @@ resource "kubernetes_namespace" "logging" {
   }
 }
 
+# Módulo Elasticsearch
 module "elasticsearch" {
-  source       = "./modules/elasticsearch"
-
-  namespace    = var.namespace
-  helm_version = var.elasticsearch_version
-
+  source          = "./modules/elasticsearch"
+  namespace       = kubernetes_namespace.logging.metadata[0].name
+  helm_version    = var.elasticsearch_version
   resource_limits = var.resource_limits
+  
+  persistence_enabled = var.persistence_enabled
+  enable_monitoring   = var.enable_monitoring
+  
+  # Valores adicionais podem ser passados como string
+  additional_values = ""
 }
 
-module "kibana" {
-  source       = "./modules/kibana"
+# Módulo Kibana
+# module "kibana" {
+#   source       = "./modules/kibana"
+#   namespace    = kubernetes_namespace.logging.metadata[0].name
+#   helm_version = var.kibana_version
+#   environment  = var.environment
   
-  namespace    = var.namespace
-  helm_version = var.kibana_version
+#   resource_limits = {
+#     cpu    = var.resource_limits.cpu
+#     memory = var.resource_limits.memory
+#   }
   
-  environment  = var.environment
-}
+#   # Depende do Elasticsearch estar pronto
+#   depends_on = [module.elasticsearch]
+# }
 
+# Módulo Fluent Bit
 module "fluent_bit" {
-  source       = "./modules/fluent-bit"
+  source             = "./modules/fluent-bit"
+  namespace          = kubernetes_namespace.logging.metadata[0].name
+  helm_version       = var.fluent_bit_version
   
-  namespace    = var.namespace
-  helm_version = var.fluent_bit_version
-
-  fluent_bit_username = var.fluent_bit_username
-  fluent_bit_password = var.fluent_bit_password
+  # Configuração do Elasticsearch
+  elasticsearch_host = module.elasticsearch.service_name
+  elasticsearch_port = "9200"
+  
+  logstash_prefix = "k8s"
+  # Desativar TLS em ambiente de desenvolvimento
+  tls_enabled        = var.environment == "dev" ? false : true
+  
+  # Depende do Elasticsearch estar pronto
+  depends_on = [module.elasticsearch]
 }

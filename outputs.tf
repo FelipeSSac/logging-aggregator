@@ -3,7 +3,7 @@ output "elasticsearch_endpoint" {
   value       = module.elasticsearch.endpoint
 }
 
-output "kibana_endpoint" {
-  description = "Endpoint do Kibana"
-  value       = module.kibana.endpoint
-}
+# output "kibana_endpoint" {
+#   description = "Endpoint do Kibana"
+#   value       = module.kibana.endpoint
+# }

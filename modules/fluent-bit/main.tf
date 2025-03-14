@@ -1,75 +1,86 @@
+# resource "kubernetes_secret" "fluent_bit_elasticsearch_creds" {
+#   metadata {
+#     name      = "fluent-bit-secret"
+#     namespace = var.namespace
+#   }
+
+#   data = {
+#     FLUENT_ELASTICSEARCH_USER     = var.fluent_bit_username
+#     FLUENT_ELASTICSEARCH_PASSWORD = var.fluent_bit_password
+#   }
+
+#   type = "Opaque"
+# }
+
+# locals {
+#   fluent_bit_config = templatefile("${path.module}/values.tpl", {
+#     log_level       = var.log_level
+#     es_host         = var.elasticsearch_host
+#     es_port         = var.elasticsearch_port
+#     logstash_prefix = var.logstash_prefix
+#     tls_enabled     = var.tls_enabled
+#   })
+# }
+
 resource "helm_release" "fluent_bit" {
   name       = "fluent-bit"
   repository = "https://fluent.github.io/helm-charts"
   chart      = "fluent-bit"
   namespace  = var.namespace
   version    = var.helm_version
+  timeout    = var.timeout_seconds
 
-  values = [
-    <<-EOT
-    config:
-      service: |
-        [SERVICE]
-            Flush        1
-            Log_Level    info
-            Daemon       off
-            Parsers_File parsers.conf
+  # values = [
+  #   local.fluent_bit_config,
+  #   var.additional_values
+  # ]
 
-      inputs: |
-        [INPUT]
-            Name        tail
-            Path        /var/log/containers/*.log
-            Parser      docker
-            Tag         kube.*
-            Refresh_Interval 5
-            
-      customParsers: |
-        [PARSER]
-            Name        docker
-            Format      json
-            Time_Key    time
-            Time_Format %Y-%m-%dT%H:%M:%S.%LZ
+  # Configurar os recursos do Fluent Bit
+  # set {
+  #   name  = "resources.limits.cpu"
+  #   value = "500m"
+  # }
 
-      outputs: |
-        [OUTPUT]
-            Name            es
-            Match           *
-            Host            elasticsearch-master
-            Port            9200
-            Logstash_Format On
-            Logstash_Prefix fluent-bit
-            Replace_Dots    On
-            Retry_Limit     False
-            tls             Off
-            tls.verify      Off
-            HTTP_User       ${var.fluent_bit_username}
-            HTTP_Passwd     ${var.fluent_bit_password}
-            Suppress_Type_Name On
-    EOT
-  ]
+  # set {
+  #   name  = "resources.limits.memory"
+  #   value = "512Mi"
+  # }
 
-  set {
-    name  = "extraVolumes[0].name"
-    value = "fluent-bit-secret"
-  }
+  # set {
+  #   name  = "resources.requests.cpu"
+  #   value = "100m" 
+  # }
 
-  set {
-    name  = "extraVolumes[0].secret.secretName"
-    value = "fluent-bit-secret"
-  }
+  # set {
+  #   name  = "resources.requests.memory"
+  #   value = "128Mi"
+  # }
 
-  set {
-    name  = "extraVolumeMounts[0].name"
-    value = "fluent-bit-secret"
-  }
+  # # Configurar tolerations
+  # set {
+  #   name  = "tolerations[0].key"
+  #   value = "node-role.kubernetes.io/master"
+  # }
 
-  set {
-    name  = "extraVolumeMounts[0].mountPath"
-    value = "/fluent-bit-secret"
-  }
+  # set {
+  #   name  = "tolerations[0].operator"
+  #   value = "Exists"
+  # }
+  
+  # set {
+  #   name  = "tolerations[0].effect"
+  #   value = "NoSchedule"
+  # }
+  
+  # # Configurar volume para secrets
+  # set {
+  #   name  = "envFrom[0].secretRef.name"
+  #   value = kubernetes_secret.fluent_bit_elasticsearch_creds.metadata[0].name
+  # }
 
-  set {
-    name  = "extraVolumeMounts[0].readOnly"
-    value = "true"
-  }
+  # depends_on = [kubernetes_secret.fluent_bit_elasticsearch_creds]
+}
+
+output "fluent_bit_name" {
+  value = helm_release.fluent_bit.name
 }

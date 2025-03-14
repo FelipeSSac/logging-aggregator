@@ -1,0 +1,18 @@
+namespace             = "logging"
+environment           = "dev"
+elasticsearch_version = "8.5.1" 
+kibana_version        = "8.5.1"
+fluent_bit_version    = "0.48.9"
+
+# Configurações de recursos
+resource_limits = {
+  replicas = "1"
+  cpu      = "1000m"
+  memory   = "1Gi"
+}
+
+# Desativar persistência em ambiente dev
+persistence_enabled = false
+
+# Desativar monitoramento em ambiente dev
+enable_monitoring = false
