@@ -3,6 +3,13 @@ variable "namespace" {
   type        = string
 }
 
+variable "elasticsearch_certs" {
+  description = "Elasticsearch certificates for TLS authentication"
+  type        = map(string)
+  default     = {}
+  sensitive   = true
+}
+
 variable "helm_version" {
   description = "Versão do Fluent Bit"
   type        = string

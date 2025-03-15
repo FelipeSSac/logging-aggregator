@@ -1,26 +1,23 @@
-# resource "kubernetes_secret" "fluent_bit_elasticsearch_creds" {
-#   metadata {
-#     name      = "fluent-bit-secret"
-#     namespace = var.namespace
-#   }
+locals {
+  has_ca_cert = contains(keys(var.elasticsearch_certs), "ca.crt")
+}
 
-#   data = {
-#     FLUENT_ELASTICSEARCH_USER     = var.fluent_bit_username
-#     FLUENT_ELASTICSEARCH_PASSWORD = var.fluent_bit_password
-#   }
+resource "kubernetes_secret" "fluent_bit_elasticsearch_creds" {
+  metadata {
+    name      = "fluent-bit-elasticsearch-certs"
+    namespace = var.namespace
+  }
 
-#   type = "Opaque"
-# }
+  data = merge(
+    {
+      FLUENT_ELASTICSEARCH_USER     = "elastic"
+      FLUENT_ELASTICSEARCH_PASSWORD = "elastic"
+    },
+    local.has_ca_cert ? { "ca.crt" = var.elasticsearch_certs["ca.crt"] } : {}
+  )
 
-# locals {
-#   fluent_bit_config = templatefile("${path.module}/values.tpl", {
-#     log_level       = var.log_level
-#     es_host         = var.elasticsearch_host
-#     es_port         = var.elasticsearch_port
-#     logstash_prefix = var.logstash_prefix
-#     tls_enabled     = var.tls_enabled
-#   })
-# }
+  type = "Opaque"
+}
 
 resource "helm_release" "fluent_bit" {
   name       = "fluent-bit"
@@ -28,57 +25,49 @@ resource "helm_release" "fluent_bit" {
   chart      = "fluent-bit"
   namespace  = var.namespace
   version    = var.helm_version
-  timeout    = var.timeout_seconds
 
-  # values = [
-  #   local.fluent_bit_config,
-  #   var.additional_values
-  # ]
+  set {
+    name  = "extraVolumes[0].name"
+    value = "es-certs"
+  }
 
-  # Configurar os recursos do Fluent Bit
-  # set {
-  #   name  = "resources.limits.cpu"
-  #   value = "500m"
-  # }
+  set {
+    name  = "extraVolumes[0].secret.secretName"
+    value = kubernetes_secret.fluent_bit_elasticsearch_creds.metadata[0].name
+  }
 
-  # set {
-  #   name  = "resources.limits.memory"
-  #   value = "512Mi"
-  # }
+  set {
+    name  = "extraVolumeMounts[0].name"
+    value = "es-certs"
+  }
 
-  # set {
-  #   name  = "resources.requests.cpu"
-  #   value = "100m" 
-  # }
+  set {
+    name  = "extraVolumeMounts[0].mountPath"
+    value = "/etc/fluent-bit/es-certs"
+  }
 
-  # set {
-  #   name  = "resources.requests.memory"
-  #   value = "128Mi"
-  # }
+  set {
+    name  = "config.outputs"
+    value = <<-EOT
+    [OUTPUT]
+        Name            es
+        Match           *
+        Host            ${var.elasticsearch_host}
+        Port            ${var.elasticsearch_port}
+        HTTP_User       ${kubernetes_secret.fluent_bit_elasticsearch_creds.data["FLUENT_ELASTICSEARCH_USER"]}
+        HTTP_Passwd     ${kubernetes_secret.fluent_bit_elasticsearch_creds.data["FLUENT_ELASTICSEARCH_PASSWORD"]}
+        Logstash_Format On
+        Logstash_Prefix ${var.logstash_prefix}
+        Replace_Dots    On
+        Retry_Limit     False
+        tls             True
+        tls.verify      False
+        tls.ca_file     /etc/fluent-bit/es-certs/ca.crt
+        Suppress_Type_Name On
+    EOT
+  }
 
-  # # Configurar tolerations
-  # set {
-  #   name  = "tolerations[0].key"
-  #   value = "node-role.kubernetes.io/master"
-  # }
-
-  # set {
-  #   name  = "tolerations[0].operator"
-  #   value = "Exists"
-  # }
-  
-  # set {
-  #   name  = "tolerations[0].effect"
-  #   value = "NoSchedule"
-  # }
-  
-  # # Configurar volume para secrets
-  # set {
-  #   name  = "envFrom[0].secretRef.name"
-  #   value = kubernetes_secret.fluent_bit_elasticsearch_creds.metadata[0].name
-  # }
-
-  # depends_on = [kubernetes_secret.fluent_bit_elasticsearch_creds]
+  depends_on = [kubernetes_secret.fluent_bit_elasticsearch_creds]
 }
 
 output "fluent_bit_name" {

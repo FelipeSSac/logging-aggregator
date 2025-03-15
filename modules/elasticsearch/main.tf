@@ -1,17 +1,17 @@
+variable "elasticsearch_certs" {
+  description = "Elasticsearch certificates for TLS authentication"
+  type        = map(string)
+  default     = {}
+  sensitive   = true
+}
+
 resource "helm_release" "elasticsearch" {
   name       = "elasticsearch"
   repository = "https://helm.elastic.co"
   chart      = "elasticsearch"
   namespace  = var.namespace
   version    = var.helm_version
-  # timeout    = var.timeout_seconds
 
-  # values = [
-  #   file("${path.module}/values.yaml"),
-  #   var.additional_values
-  # ]
-
-  # Configurações básicas
   set {
     name  = "replicas"
     value = var.resource_limits.replicas
@@ -22,7 +22,6 @@ resource "helm_release" "elasticsearch" {
     value = var.resource_limits.replicas == "1" ? "1" : ceil(tonumber(var.resource_limits.replicas) / 2 + 0.5)
   }
 
-  # Configurações de recursos
   set {
     name  = "resources.limits.cpu"
     value = var.resource_limits.cpu
@@ -33,62 +32,36 @@ resource "helm_release" "elasticsearch" {
     value = var.resource_limits.memory
   }
 
-  # set {
-  #   name  = "resources.requests.cpu"
-  #   value = var.enable_requests ? format("%sm", max(500, tonumber(trimsuffix(var.resource_limits.cpu, "m")) / 2)) : "100m"
-  # }
+  set {
+    name  = "esJavaOpts"
+    value = "-Xmx${tonumber(trimsuffix(var.resource_limits.memory, "Gi")) / 2}g -Xms${tonumber(trimsuffix(var.resource_limits.memory, "Gi")) / 2}g"
+  }
 
-  # set {
-  #   name  = "resources.requests.memory"
-  #   value = var.enable_requests ? format("%s", max("512Mi", var.resource_limits.memory)) : "256Mi"
-  # }
+  set {
+    name  = "persistence.enabled"
+    value = var.persistence_enabled ? "true" : "false"
+  }
 
-  # # Configurações de Java
-  # set {
-  #   name  = "esJavaOpts"
-  #   value = "-Xmx${tonumber(trimsuffix(var.resource_limits.memory, "Gi")) / 2}g -Xms${tonumber(trimsuffix(var.resource_limits.memory, "Gi")) / 2}g"
-  # }
+  set {
+    name  = "volumeClaimTemplate.enabled"
+    value = var.persistence_enabled ? "true" : "false"
+  }
 
-  # # Configurações de persistência
-  # set {
-  #   name  = "persistence.enabled"
-  #   value = var.persistence_enabled ? "true" : "false"
-  # }
+  dynamic "set" {
+    for_each = var.persistence_enabled ? [1] : []
+    content {
+      name  = "volumeClaimTemplate.accessModes[0]"
+      value = "ReadWriteOnce"
+    }
+  }
 
-  # set {
-  #   name  = "volumeClaimTemplate.enabled"
-  #   value = var.persistence_enabled ? "true" : "false"
-  # }
-
-  # dynamic "set" {
-  #   for_each = var.persistence_enabled ? [1] : []
-  #   content {
-  #     name  = "volumeClaimTemplate.accessModes[0]"
-  #     value = "ReadWriteOnce"
-  #   }
-  # }
-
-  # dynamic "set" {
-  #   for_each = var.persistence_enabled ? [1] : []
-  #   content {
-  #     name  = "volumeClaimTemplate.storageClassName"
-  #     value = "standard"
-  #   }
-  # }
-
-  # dynamic "set" {
-  #   for_each = var.persistence_enabled ? [1] : []
-  #   content {
-  #     name  = "volumeClaimTemplate.resources.requests.storage"
-  #     value = var.storage_size
-  #   }
-  # }
-
-  # # Configurações de segurança
-  # set {
-  #   name  = "antiAffinity"
-  #   value = "soft"
-  # }
+  dynamic "set" {
+    for_each = var.persistence_enabled ? [1] : []
+    content {
+      name  = "volumeClaimTemplate.storageClassName"
+      value = "standard"
+    }
+  }
 
   set {
     name  = "podDisruptionBudget.enabled"
@@ -96,39 +69,13 @@ resource "helm_release" "elasticsearch" {
   }
 
   set {
-    name  = "xpack.security.enabled"
-    value = "false"
-  }
-
-  set {
-    name  = "xpack.security.transport.ssl.enabled"
-    value = "false"
-  }
-
-  set {
-    name  = "xpack.security.http.ssl.enabled"
-    value = "false"
-  }
-
-  set {
-    name = "xpack.security.enrollment.enabled" 
-    value = "false"
-  }
-
-  # set {
-  #   name  = "imageTag"
-  #   value = "8.10.0"
-  # }
-
-  # # Configurações explícitas de segurança
-  set {
     name  = "security.enabled"
-    value = "false"  # Changed from true to false
+    value = true
   }
 
   set {
     name  = "security.tls.enabled"
-    value = "false"
+    value = "true"
   }
 
   set {
@@ -138,20 +85,9 @@ resource "helm_release" "elasticsearch" {
 
   set {
     name  = "security.encryption.enabled"
-    value = "false"
+    value = "true"
   }
 
-  set {
-    name  = "security.http.ssl.enabled"
-    value = "false"
-  }
-
-  set {
-    name  = "security.transport.ssl.enabled"
-    value = "false"
-  }
-
-  # Add these set blocks for password configuration
   set {
     name  = "secret.enabled"
     value = "true"
@@ -161,17 +97,29 @@ resource "helm_release" "elasticsearch" {
     name  = "secret.password"
     value = "elastic"
   }
-  
-  # # Monitoramento
-  # set {
-  #   name  = "metrics.enabled"
-  #   value = var.enable_monitoring ? "true" : "false"
-  # }
 
-  # set {
-  #   name  = "metrics.serviceMonitor.enabled"
-  #   value = var.enable_monitoring ? "true" : "false"
-  # }
+  set {
+    name  = "metrics.enabled"
+    value = var.enable_monitoring ? "true" : "false"
+  }
+
+  set {
+    name  = "metrics.serviceMonitor.enabled"
+    value = var.enable_monitoring ? "true" : "false"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+data "kubernetes_secret" "elasticsearch_certs" {
+  metadata {
+    name      = "elasticsearch-master-certs"
+    namespace = var.namespace
+  }
+
+  depends_on = [helm_release.elasticsearch]
 }
 
 resource "kubernetes_service" "elasticsearch_service" {
@@ -201,4 +149,9 @@ output "endpoint" {
 
 output "service_name" {
   value = "elasticsearch-master"
+}
+
+output "elasticsearch_certs" {
+  value     = data.kubernetes_secret.elasticsearch_certs.data
+  sensitive = true
 }

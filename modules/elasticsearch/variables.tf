@@ -17,31 +17,13 @@ variable "resource_limits" {
   })
   default = {
     replicas = "1"
-    cpu      = "1000m"
-    memory   = "1Gi"
+    cpu      = "2000m"
+    memory   = "4Gi"
   }
-}
-
-variable "enable_requests" {
-  description = "Habilitar requests de recursos"
-  type        = bool
-  default     = true
 }
 
 variable "persistence_enabled" {
   description = "Habilitar persistência de dados"
-  type        = bool
-  default     = false
-}
-
-variable "storage_size" {
-  description = "Tamanho do volume de armazenamento"
-  type        = string
-  default     = "10Gi"
-}
-
-variable "enable_snapshots" {
-  description = "Habilitar snapshots automáticos"
   type        = bool
   default     = false
 }
@@ -52,14 +34,14 @@ variable "enable_monitoring" {
   default     = false
 }
 
-variable "timeout_seconds" {
-  description = "Tempo de timeout para instalação do Helm"
-  type        = number
-  default     = 600
+variable "tls_enabled" {
+  description = "Habilitar TLS"
+  type        = bool
+  default     = false
 }
 
-variable "additional_values" {
-  description = "Valores adicionais para o Helm chart"
+variable "environment" {
+  description = "Ambiente onde o Elasticsearch será implantado"
   type        = string
-  default     = ""
+  default     = "dev"
 }

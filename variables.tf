@@ -30,7 +30,7 @@ variable "fluent_bit_version" {
 }
 
 # Configuração de recursos
-variable "resource_limits" {
+variable "es_resource_limits" {
   description = "Limites de recursos para os pods do Elasticsearch"
   type = object({
     replicas = string
@@ -40,7 +40,7 @@ variable "resource_limits" {
   default = {
     replicas = "1"
     cpu      = "2000m"
-    memory   = "2Gi"
+    memory   = "4Gi"
   }
 }
 
